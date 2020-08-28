@@ -1,132 +1,247 @@
+
 import unittest
 import numpy as np
-from Answer import ConvolutionLayer, MaxPoolingLayer, FCLayer, SoftmaxLayer, Sigmoid, Tanh, ReLU, CNN_Classifier
+from Answer import ConvolutionLayer
 from utils import rel_error
 
-def test_model(num_feat, num_classes):
-    classifier = CNN_Classifier()
-    classifier.add_layer('Conv-1', ConvolutionLayer(num_feat, 2, kernel_size=3, stride=1, pad=1))
-    classifier.add_layer('ReLU', ReLU())
-    classifier.add_layer('Conv-2', ConvolutionLayer(2, 3, kernel_size=3, stride=1, pad=1))
-    classifier.add_layer('tanh', Tanh())
-    classifier.add_layer('Conv-3', ConvolutionLayer(3, 3, kernel_size=3, stride=1, pad=0))
-    classifier.add_layer('Sigmoid', Sigmoid())
-    classifier.add_layer('Max-pool - 1', MaxPoolingLayer(kernel_size=2, stride=1))
-    classifier.add_layer('FC-4', FCLayer(12, num_classes))
-    classifier.add_layer('Softmax', SoftmaxLayer())
-    return classifier
-
-class TestClassifier(unittest.TestCase):
-    def test_classifier_1_predict(self):
+class TestConvolutionLayer(unittest.TestCase):
+    def test_conv_layer_1_forward(self):
         print('\n==================================')
-        print('      Test classifier predict     ')
+        print('       Test conv layer forward      ')
         print('==================================')
         np.random.seed(123)
-        in_dim, num_classes = 1, 7
+        in_dim, out_dim = 3, 3
+        kernel_size, stride, pad = 3, 1, 1
 
-        classifier = test_model(in_dim, num_classes)
-        x = np.random.randn(5, in_dim, 5, 5)
-        out = classifier.predict(x)
+        x = np.random.randn(1, in_dim, 5, 5)
+        conv_layer = ConvolutionLayer(in_dim, out_dim, kernel_size, stride, pad)
+        
+        conv_out = conv_layer.forward(x)
 
-        correct_out = [[0.02164869, 0.66709033, 0.03838546, 0.0290932 , 0.00573851, 0.01742173, 0.22062208],
-                        [0.04049546, 0.61548575, 0.06589824, 0.04041239, 0.00798417, 0.03396838, 0.19575561],
-                        [0.0241649 , 0.68671605, 0.03490482, 0.0241778 , 0.00504781, 0.01341441, 0.21157421],
-                        [0.02155642, 0.66083457, 0.03907124, 0.02851615, 0.00536027, 0.01696291, 0.22769844],
-                        [0.02336113, 0.74348208, 0.04048574, 0.02411253, 0.00481644, 0.02555465, 0.13818742]]
+        correct_out = [[[[  2.70986336,  -0.31118712, -10.1273488 ,   0.85765762,  -2.7855125 ],
+                        [-11.16096594,  -4.62052763,   4.47234199,  -5.16258793,  -1.522542  ],
+                        [  6.68757601,  19.83864401,   2.92622659,  -0.65722221,   5.45804442],
+                        [  6.78984906, -11.08224115,  -0.16695308,   9.68053968,  -8.52642269],
+                        [  1.91536819,   3.4493333 ,  -0.51816154,   0.06619419,   7.45981292]],
 
-        e = rel_error(correct_out, out)
+                        [[ -0.76448774,   3.18821361,   6.14514613,  -1.29982604,   4.64356555],
+                        [  9.50245602,   2.15732864,   2.15842172,  -4.25405756,   1.28322504],
+                        [  3.29674819, -14.58109241,  -7.12275376,  -1.82344435,  -4.12373608],
+                        [ -8.71427742,  -1.84563963,  -2.68518672,  -6.5596493 ,   1.49822246],
+                        [ -6.84520333,   5.98935466,   6.06150536,   3.98359216,  -0.40315198]],
+
+                        [[ -6.44970728,  -3.02240376,  -5.16519129,  -9.06742459,  -3.94964887],
+                        [ -2.73788261,  -7.35111813,  -5.47853982,   3.810986  ,   1.34136929],
+                        [  4.22702118,   7.86218534,   1.99505028,  -3.30663869,   3.86978039],
+                        [  4.01189286,  -4.94100023,   6.62336117,  -2.10346462,   1.96247806],
+                        [  2.98641884,  -2.82837067,  -5.23875198,   1.3729101 ,  -1.3081586 ]]]]
+
+
+        e = rel_error(correct_out, conv_out)
         print('Relative difference:', e)
-        self.assertTrue(e <= 5e-6)
+        self.assertTrue(e <= 5e-8)
         
-    def test_classifier_2_forward(self):
+    def test_conv_layer_2_backward(self):
         print('\n==================================')
-        print('      Test classifier forward     ')
+        print('       Test conv layer backward     ')
         print('==================================')
         np.random.seed(123)
-        num_feat, num_classes = 3, 7
+        in_dim, out_dim = 3, 3
+        kernel_size, stride, pad = 3, 1, 1
 
-        classifier = test_model(num_feat, num_classes)
-
-        x = np.random.randn(3, num_feat, 5, 5)
-        y = np.zeros((3, num_classes))
-        labels = np.random.permutation(3)
-        y[list(range(len(labels))), labels] = 1.0
-
-        ce_loss = classifier.forward(x, y, 0.001)
-        correct_ce_loss = 2.7128840564513546
-
-        e = rel_error(correct_ce_loss, ce_loss)
+        x = np.random.randn(1, in_dim, 5, 5)
+        conv_layer = ConvolutionLayer(in_dim, out_dim, kernel_size, stride, pad)
         
-        print('Relative difference:', e)
+        conv_out = conv_layer.forward(x)
+        d_prev = np.random.randn(*conv_out.shape)
+        dx = conv_layer.backward(d_prev, 0.1)
+        dw = conv_layer.dw
+        db = conv_layer.db
 
-        self.assertTrue(e <= 5e-9)
+        correct_dx = [[[[-1.79921076, -4.01635575, -4.51317017,  3.1799483 ,  0.60601338],
+                        [-3.0409217 , -3.03893501,  0.263502  , -1.77473826, -0.66048859],
+                        [-2.70680836,  7.95821241, -0.05199919,  3.71902007, -1.95724218],
+                        [ 4.63502915, 10.48786242,  3.23741466, -1.10458816,  3.64821246],
+                        [ 1.74179073,  0.89016108, -5.95489576, -2.90265459,  3.82054991]],
 
-    def test_classifier_3_backward(self):
+                        [[ 2.12426007, -8.61633801, -1.10075962,  0.69954115,  1.41973446],
+                        [-1.21497191, -0.76472356, -4.03381736, -1.49888202, -0.12346752],
+                        [ 5.45687502, -1.69046871,  2.26612641, -4.9606816 , -7.63459002],
+                        [-2.22526131, -1.22114106,  1.1399924 , -0.33830405, -2.6194636 ],
+                        [ 0.90182683,  0.23853391, -5.56596295, -1.43509046, -1.05353328]],
+
+                        [[ 3.18771876, -0.02184037, -2.03027136, -0.05773355, -3.82179085],
+                        [ 1.34224997, -2.91348884, -1.58173337, -5.66629621,  3.45049871],
+                        [-2.67463988,  2.86761068,  2.64368971, -3.71621604, -7.67662767],
+                        [-2.91132903, -4.52401895,  2.17502747, -4.60068269, -2.16018264],
+                        [ 1.36481716,  6.13043585,  1.7706074 ,  2.06804708,  0.96884191]]]]
+        correct_dw = [[[[ -1.04985591,   2.87904911,  -6.82503529],
+                        [  1.66702503,  -0.93491251,  -3.60471169],
+                        [ -2.87819899,  -3.46218444,   1.40624326]],
+
+                        [[  1.25476706,   2.76259291,  -4.67645933],
+                        [  0.41342563,  -4.97285148,   1.75108074],
+                        [ -0.09661992,   0.64336928,  -3.79150539]],
+
+                        [[ -3.91150984,   1.21576097,   0.09212882],
+                        [ -0.66208335,  -0.20382688,  -1.03624965],
+                        [  1.14408925,  -0.89092561,  -0.39136559]]],
+
+
+                        [[[ -3.24175872,   7.70245334,   3.49461994],
+                        [  5.30043722,   6.73881481,   0.38190406],
+                        [ -1.35312823,  -1.90830871,  -5.62180321]],
+
+                        [[ -1.77178115,  -7.2335903 ,   1.3902429 ],
+                        [  5.978873  ,  11.12390811,   4.27724157],
+                        [  1.56800653,  -6.17417643,  -8.81210226]],
+
+                        [[ -1.36754116,  -1.76925626,  -1.95415376],
+                        [  3.19023575, -10.05059218,   2.02020642],
+                        [  0.01609822,  -4.61553449,   4.02922391]]],
+
+
+                        [[[ -3.85567269,  -5.30516932,  -7.00612174],
+                        [  1.08820947,  -2.86128285,  -5.19898729],
+                        [ -8.71727415,  -0.10330606,   0.96197135]],
+
+                        [[  6.90694753,   0.67861547,   0.76847915],
+                        [  0.33708355,  -3.16736077,  -1.20728537],
+                        [ -3.73821152,  -1.41083771,   1.33975801]],
+
+                        [[  0.18050385,  -7.86418369,   3.46332905],
+                        [  5.33713985,  -2.32996899,  -1.64722694],
+                        [  1.46461391,   4.07081265,  -0.7995358 ]]]]
+        correct_db = [ 1.5437889 , -3.07137414, -7.72938847]
+
+        dx_e = rel_error(correct_dx, dx)
+        dw_e = rel_error(correct_dw, dw)
+        db_e = rel_error(correct_db, db)
+
+        print('Relative difference dx:', dx_e)
+        print('Relative difference dw:', dw_e)
+        print('Relative difference db:', db_e)
+
+        self.assertTrue(dx_e <= 5e-6)
+        self.assertTrue(dw_e <= 5e-6)
+        self.assertTrue(db_e <= 5e-6)
+
+    def test_conv_layer_3_update(self):
         print('\n==================================')
-        print('      Test classifier backward    ')
+        print('        Test conv layer update      ')
         print('==================================')
         np.random.seed(123)
-        num_feat, num_classes = 3, 7
+        in_dim, out_dim = 3, 3
+        kernel_size, stride, pad = 3, 1, 1
 
-        classifier = test_model(num_feat, num_classes)
+        x = np.random.randn(1, in_dim, 5, 5)
+        conv_layer = ConvolutionLayer(in_dim, out_dim, kernel_size, stride, pad)
 
-        x = np.random.randn(3, num_feat, 5, 5)
-        y = np.zeros((3, num_classes))
-        labels = np.random.permutation(3)
-        y[list(range(len(labels))), labels] = 1.0
+        before_w = np.array(conv_layer.w, copy=True)
+        before_b = np.array(conv_layer.b, copy=True)
 
-        ce_loss = classifier.forward(x, y, 0.01)
-        classifier.backward(0.01)
-        
-        conv_3_W = np.array(classifier.layers['Conv-3'].w, copy=True)
+        conv_out = conv_layer.forward(x)
+        d_prev = np.random.randn(*conv_out.shape)
+        dx = conv_layer.backward(d_prev, 0.01)
+        conv_layer.update(learning_rate=0.05)
 
-        classifier.update(learning_rate=0.01)
+        after_w = conv_layer.w
+        after_b = conv_layer.b
 
-        correct_conv_3_W = [[[[ 0.42614664, -1.60540974, -0.4276796 ],
-                            [ 1.24286955, -0.73521696,  0.50124899],
-                            [ 1.01273905,  0.27874086, -1.37094847]],
+        correct_before_w = [[[[ 1.03972709, -0.40336604, -0.12602959],
+                            [-0.83751672, -1.60596276,  1.25523737],
+                            [-0.68886898,  1.66095249,  0.80730819]],
 
-                            [[-0.33247528,  1.95941134, -2.02504576],
-                            [-0.27578601, -0.55210807,  0.12074736],
-                            [ 0.74821562,  1.60869097, -0.27023239]],
+                            [[-0.31475815, -1.0859024 , -0.73246199],
+                            [-1.21252313,  2.08711336,  0.16444123],
+                            [ 1.15020554, -1.26735205,  0.18103513]],
 
-                            [[ 0.81234133,  0.49974014,  0.4743473 ],
-                            [-0.56392393, -0.99732147, -1.10004311],
-                            [-0.75643721,  0.32168658,  0.76094939]]],
-
-
-                            [[[ 0.32346885, -0.5489551 ,  1.80597011],
-                            [ 1.51886562, -0.35400011, -0.82343141],
-                            [ 0.13021495,  1.26729865,  0.33276498]],
-
-                            [[ 0.5565487 , -0.21208012,  0.4562709 ],
-                            [ 1.54454445, -0.23966878,  0.14330773],
-                            [ 0.25381648,  0.28372536, -1.41188888]],
-
-                            [[-1.87686866, -1.01965507,  0.1679423 ],
-                            [ 0.55385617, -0.53067456,  1.37725748],
-                            [-0.14317597,  0.020316  , -0.19396387]]],
+                            [[ 1.17786194, -0.33501076,  1.03111446],
+                            [-1.08456791, -1.36347154,  0.37940061],
+                            [-0.37917643,  0.64205469, -1.97788793]]],
 
 
-                            [[[ 0.13402679,  0.70447407,  0.66565344],
-                            [-0.89842294,  1.52366378, -1.09502646],
-                            [ 0.07922701, -0.27439657, -1.04899168]],
+                            [[[ 0.71226464,  2.59830393, -0.02462598],
+                            [ 0.03414213,  0.17954948, -1.86197571],
+                            [ 0.42614664, -1.60540974, -0.4276796 ]],
 
-                            [[-0.07512059, -0.74081377,  0.07290724],
-                            [ 0.40308596,  1.47192937,  0.30738422],
-                            [-0.61122534, -0.39161981,  0.13997811]],
+                            [[ 1.24286955, -0.73521696,  0.50124899],
+                            [ 1.01273905,  0.27874086, -1.37094847],
+                            [-0.33247528,  1.95941134, -2.02504576]],
 
-                            [[ 0.09346083,  1.45958927,  1.39535293],
-                            [-0.35893593, -0.54864213, -2.5570546 ],
-                            [-0.54892041, -0.97805771, -0.35482446]]]]
+                            [[-0.27578601, -0.55210807,  0.12074736],
+                            [ 0.74821562,  1.60869097, -0.27023239],
+                            [ 0.81234133,  0.49974014,  0.4743473 ]]],
 
-        conv_3_W_e = rel_error(correct_conv_3_W, conv_3_W)
-        
-        print('Relative difference conv_3_W_e:', conv_3_W_e)
 
-        self.assertTrue(conv_3_W_e <= 5e-7)
+                            [[[-0.56392393, -0.99732147, -1.10004311],
+                            [-0.75643721,  0.32168658,  0.76094939],
+                            [ 0.32346885, -0.5489551 ,  1.80597011]],
+
+                            [[ 1.51886562, -0.35400011, -0.82343141],
+                            [ 0.13021495,  1.26729865,  0.33276498],
+                            [ 0.5565487 , -0.21208012,  0.4562709 ]],
+
+                            [[ 1.54454445, -0.23966878,  0.14330773],
+                            [ 0.25381648,  0.28372536, -1.41188888],
+                            [-1.87686866, -1.01965507,  0.1679423 ]]]]
+        correct_before_b = [0., 0., 0.]
+
+        correct_after_w = [[[[ 1.09689866, -0.54913364,  0.21465505],
+                            [-0.9246368 , -1.56644397,  1.44112153],
+                            [-0.54805894,  1.841536  ,  0.74062891]],
+
+                            [[-0.37891291, -1.22891861, -0.5019351 ],
+                            [-1.23865077,  2.34514794,  0.07762718],
+                            [ 1.16021246, -1.3052236 ,  0.37142506]],
+
+                            [[ 1.37873781, -0.39730636,  1.03114803],
+                            [-1.0563443 , -1.35941582,  0.4329204 ],
+                            [-0.43808719,  0.68949022, -1.96722015]]],
+
+
+                            [[[ 0.87755776,  2.22487363, -0.1994678 ],
+                            [-0.23072609, -0.15658328, -1.8894498 ],
+                            [ 0.49572071, -1.51721865, -0.148514  ]],
+
+                            [[ 1.33705152, -0.37684592,  0.43399247],
+                            [ 0.71835273, -0.27620022, -1.59097982],
+                            [-0.41237174,  2.27693752, -1.59355336]],
+
+                            [[-0.20864999, -0.46612975,  0.21899841],
+                            [ 0.5920708 ,  2.11845969, -0.37245876],
+                            [ 0.81519196,  0.7327657 ,  0.27502067]]],
+
+
+                            [[[-0.37367795, -0.73655095, -0.75468722],
+                            [-0.81425165,  0.46619831,  1.02432303],
+                            [ 0.76078817, -0.54626009,  1.76599841]],
+
+                            [[ 1.18035314, -0.38952389, -0.8655608 ],
+                            [ 0.11394674,  1.43136953,  0.39462669],
+                            [ 0.74596375, -0.1424926 ,  0.39133621]],
+
+                            [[ 1.54246971,  0.15246189, -0.02921384],
+                            [-0.01189834,  0.40150057, -1.33588103],
+                            [-1.95854526, -1.22778415,  0.20867483]]]]
+        correct_after_b = [-0.07718945,  0.15356871,  0.38646942]
+
+        before_w_e = rel_error(correct_before_w, before_w)
+        before_b_e = rel_error(correct_before_b, before_b)
+        after_w_e = rel_error(correct_after_w, after_w)
+        after_b_e = rel_error(correct_after_b, after_b)
+
+        print('Relative difference before_w:', before_w_e)
+        print('Relative difference before_b:', before_b_e)
+        print('Relative difference after_w :', after_w_e)        
+        print('Relative difference after_b :', after_b_e)
+
+        self.assertTrue(before_w_e <= 5e-6)
+        self.assertTrue(before_b_e <= 1e-11)
+        self.assertTrue(after_w_e <= 5e-6)
+        self.assertTrue(after_b_e <= 5e-6)
     
     def runTest(self):
-        self.test_classifier_1_predict()
-        self.test_classifier_2_forward()
-        self.test_classifier_3_backward()
+        self.test_conv_layer_1_forward()
+        self.test_conv_layer_2_backward()
+        self.test_conv_layer_3_update()
